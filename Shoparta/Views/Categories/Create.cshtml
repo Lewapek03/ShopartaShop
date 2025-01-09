@@ -1,0 +1,23 @@
+﻿@model Shoparta.Models.Category
+
+<h1>Add New Category</h1>
+
+@if(ViewBag.ErrorMessage != null)
+{
+    <div class="alert alert-danger">
+        @Html.Raw(ViewBag.ErrorMessage)
+    </div>
+}
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label asp-for="Name" class="control-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

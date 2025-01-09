@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "Analytics Panel";
+    var totalOrders = ViewBag.TotalOrders as int? ?? 0;
+    var totalSales = ViewBag.TotalSales as int? ?? 0;
+    var topSellingItems = ViewBag.TopSellingItems as List<Shoparta.Controllers.AnalystController.TopSellingItem>;
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div>
+    <h2>Sales Summary</h2>
+    <p>Total number of orders: <strong>@totalOrders</strong></p>
+    <p>Total sales value: <strong>@totalSales.ToString("C")</strong></p>
+</div>
+
+<div>
+    <h2>Top-Selling Products</h2>
+    @if (topSellingItems != null && topSellingItems.Any())
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Quantity Sold</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in topSellingItems)
+                {
+                    <tr>
+                        <td>@item.Item.Name</td>
+                        <td>@item.Item.Category.Name</td>
+                        <td>@item.QuantitySold</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No data available to display.</p>
+    }
+</div>

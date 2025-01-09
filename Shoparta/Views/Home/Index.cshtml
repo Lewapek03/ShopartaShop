@@ -1,0 +1,182 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+@using Shoparta.Models.DTOs
+@model ItemDTO
+
+@{
+    ViewData["Title"] = "Shop Online";
+}
+
+<!-- Include Anti-forgery token -->
+@Html.AntiForgeryToken()
+
+<!-- AddToCart Modal -->
+<div class="modal fade" id="addToCartModal" tabindex="-1" aria-labelledby="addToCartModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 class="modal-title" id="addToCartModalLabel">Product added to cart</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- Modal Body -->
+            <div class="modal-body">
+                The product has been successfully added to your cart.
+            </div>
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <a href="/Cart" class="btn btn-primary">Go to cart</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue shopping</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Form -->
+<form class="d-flex my-1">
+    <div class="mx-1">
+        <select class="form-select w-100 form-select-secondary" id="categoryId" name="categoryId">
+            <option selected>Category</option>
+            @foreach (var category in Model.Categories)
+            {
+                <option selected="@(category.Id == Model.CategoryId)" value="@category.Id">@category.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="col mx-1">
+        <input class="form-control me-2" name="searchItem" value="@Model.SearchItem" id="searchItem" placeholder="Search items">
+    </div>
+
+    <div class="mx-1 me-0">
+        <button class="btn btn-outline-secondary bi-search" type="submit"></button>
+    </div>
+</form>
+
+@if (Model.CategoryId != 0 || !string.IsNullOrEmpty(Model.SearchItem))
+{
+    <div class="d-flex justify-content-end me-2 mb-1">
+        <a class="btn btn-outline-secondary" href="/Home/Index">Reset</a>
+    </div>
+}
+
+<!-- Product List -->
+<div class="container">
+    <div class="row">
+        @foreach (var item in Model.Items)
+        {
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100 overflow-hidden position-relative">
+                    <div class="ratio ratio-1x1">
+                        <img src="@item.Image" class="card-img-top" alt="Product image" style="object-fit: cover;">
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="position-absolute top-0 end-0 m-2">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#descriptionModal-@item.Id">
+                            <i class="bi bi-arrows-angle-expand"></i>
+                        </button>
+                        @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
+                        {
+                            <a href="@Url.Action("EditItem", "Item", new { id = item.Id })" class="btn btn-warning ms-1">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-danger ms-1" onclick="RemoveItem(@item.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">@item.Name</h5>
+                        <p class="card-text">Price: @item.Price</p>
+                        @if (!SignInManager.IsSignedIn(User) || !User.IsInRole("Admin"))
+                        {
+                            <button onclick="add(@item.Id)" class="btn btn-primary mt-auto">Add to cart</button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Description Modal -->
+            <div class="modal fade" id="descriptionModal-@item.Id" tabindex="-1" aria-labelledby="descriptionModalLabel-@item.Id" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <!-- Modal Header -->
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="descriptionModalLabel-@item.Id">@item.Name</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <!-- Modal Body -->
+                        <div class="modal-body">
+                            <img src="@item.Image" class="img-fluid mb-3" alt="@item.Name">
+                            <p>@item.Description</p>
+                            <p>Price: @item.Price</p>
+                        </div>
+                        <!-- Modal Footer -->
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function add(itemId) {
+            if (!@Json.Serialize(SignInManager.IsSignedIn(User))) {
+                window.location.href = "/Identity/Account/Login";
+            } else {
+                try {
+                    var response = await fetch(`/Cart/AddItem?itemId=${itemId}`);
+                    if (response.status == 200) {
+                        var result = await response.json();
+                        var cartCountEl = document.getElementById("cartCount");
+                        cartCountEl.innerHTML = result;
+
+                        var addToCartModal = new bootstrap.Modal(document.getElementById('addToCartModal'));
+                        addToCartModal.show();
+                    } else {
+                        alert("Error: Could not add item to cart.");
+                    }
+                } catch (err) {
+                    console.log(err);
+                    alert("Error: Something went wrong with the request.");
+                }
+            }
+        }
+
+        function RemoveItem(itemId) {
+            const formData = new FormData();
+            formData.append('id', itemId);
+            formData.append('__RequestVerificationToken', getAntiForgeryToken()); // CSRF Token
+            fetch('/Item/RemoveItem', {
+                method: 'POST',
+                body: formData
+            
+            })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Produkt został pomyślnie usunięty.');
+                        location.reload();
+                        
+                    } else {
+                        
+                        return response.text().then(text => { throw new Error(text) });
+                    }
+                })
+                .catch(error => {
+                    alert(`Błąd: ${error.message}`);
+                });
+        }
+
+        function getAntiForgeryToken() {
+            return document.querySelector('input[name="__RequestVerificationToken"]').value;
+        }
+    </script>
+}
